@@ -20,10 +20,16 @@ SPI and Wire libraries even though we are only using I2C */
 #include "data_fusion.h"
 
 // Example I2C Setup
+
 // SDO_XM and SDO_G are both pulled-up, so our addresses are:
 
+/*
 #define LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW
 #define LSM9DS0_G   0x6B // Would be 0x6A if SDO_G is LOW
+*/
+
+#define LSM9DS0_XM  0x1E // Would be 0x1E if SDO_XM is LOW
+#define LSM9DS0_G   0x6A // Would be 0x6A if SDO_G is LOW
 
 // Create an instance of the LSM9DS0 library called `dof` the
 // parameters for this constructor are:
@@ -31,21 +37,18 @@ SPI and Wire libraries even though we are only using I2C */
 LSM9DS0 dof(MODE_I2C, LSM9DS0_G, LSM9DS0_XM);
 
 
+/*
 // Interrupt Pin Definitions 
 const byte INT1XM = 3; // INT1XM tells us when accel data is ready
 const byte INT2XM = 14; // INT2XM tells us when mag data is ready
 const byte DRDYG  = 4; // DRDYG  tells us when gyro data is ready
-
-uint32_t count = 0;  // used to control display output rate
-uint32_t delt_t = 0; // used to control display output rate
-
+*/
 
 uint32_t lastUpdate = 0;    // used to calculate integration interval
 uint32_t Now = 0;           // used to calculate integration interval
 
 float abias[3] = {0, 0, 0}, gbias[3] = {0, 0, 0};
 float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor data values 
-
 
 float temperature;
 
@@ -60,10 +63,12 @@ void setup()
 {
     Serial.begin(115200); // Start serial at 115200 bps
 
+    /*
     // Set up interrupt pins as inputs
     pinMode(INT1XM, INPUT);
     pinMode(INT2XM, INPUT);
     pinMode(DRDYG,  INPUT);
+    */
             
     // begin() returns a 16-bit value which includes both the gyro 
     // and accelerometers WHO_AM_I response. Check this to
@@ -95,29 +100,23 @@ void setup()
 
 void loop()
 {
-    if(digitalRead(DRDYG)) {  // When new gyro data is ready
-        dof.readGyro();           // Read raw gyro data
-        gx = dof.calcGyro(dof.gx) - gbias[0];   // Convert to degrees per seconds, remove gyro biases
-        gy = dof.calcGyro(dof.gy) - gbias[1];
-        gz = dof.calcGyro(dof.gz) - gbias[2];
-  }
-  
-    if(digitalRead(INT1XM)) {  // When new accelerometer data is ready
-        dof.readAccel();         // Read raw accelerometer data
-        ax = dof.calcAccel(dof.ax) - abias[0];   // Convert to g's, remove accelerometer biases
-        ay = dof.calcAccel(dof.ay) - abias[1];
-        az = dof.calcAccel(dof.az) - abias[2];
-  }
-  
-    if(digitalRead(INT2XM)) {  // When new magnetometer data is ready
-        dof.readMag();           // Read raw magnetometer data
-        mx = dof.calcMag(dof.mx);     // Convert to Gauss and correct for calibration
-        my = dof.calcMag(dof.my);
-        mz = dof.calcMag(dof.mz);
+    dof.readGyro();           // Read raw gyro data
+    gx = dof.calcGyro(dof.gx) - gbias[0];   // Convert to degrees per seconds, remove gyro biases
+    gy = dof.calcGyro(dof.gy) - gbias[1];
+    gz = dof.calcGyro(dof.gz) - gbias[2];
 
-        dof.readTemp();
-        temperature = 21.0 + (float) dof.temperature/8.; // slope is 8 LSB per degree C, just guessing at the intercept
-  }
+    dof.readAccel();         // Read raw accelerometer data
+    ax = dof.calcAccel(dof.ax) - abias[0];   // Convert to g's, remove accelerometer biases
+    ay = dof.calcAccel(dof.ay) - abias[1];
+    az = dof.calcAccel(dof.az) - abias[2];
+
+    dof.readMag();           // Read raw magnetometer data
+    mx = dof.calcMag(dof.mx);     // Convert to Gauss and correct for calibration
+    my = dof.calcMag(dof.my);
+    mz = dof.calcMag(dof.mz);
+
+    dof.readTemp();
+    temperature = 21.0 + (float) dof.temperature/8.; // slope is 8 LSB per degree C, just guessing at the intercept
 
     Now = micros();
     deltat = ((Now - lastUpdate)/1000000.0f); // set integration time by time elapsed since last filter update
@@ -129,70 +128,67 @@ void loop()
     MadgwickQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, mx, my, mz);
     //MahonyQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, mx, my, mz);
 
-    // Serial print and/or display at 0.5 s rate independent of data rates
-    delt_t = millis() - count;
     
-    if (delt_t > 25) { // send data at 40 Hz
+    // Print the heading and orientation for fun!
+    //printHeading(mx, my);
+    //printOrientation(ax, ay, az);
 
-        // Print the heading and orientation for fun!
-        //printHeading(mx, my);
-        //printOrientation(ax, ay, az);
+    quaternions_to_tait_bryan();
 
-        quaternions_to_tait_bryan();
+    /*
+    Serial.print("ax = "); Serial.print((int)1000*ax);  
+    Serial.print(" ay = "); Serial.print((int)1000*ay); 
+    Serial.print(" az = "); Serial.print((int)1000*az); Serial.println(" mg");
+    Serial.print("gx = "); Serial.print( gx, 2); 
+    Serial.print(" gy = "); Serial.print( gy, 2); 
+    Serial.print(" gz = "); Serial.print( gz, 2); Serial.println(" deg/s");
+    Serial.print("mx = "); Serial.print( (int)1000*mx); 
+    Serial.print(" my = "); Serial.print( (int)1000*my); 
+    Serial.print(" mz = "); Serial.print( (int)1000*mz); Serial.println(" mG");
 
-        /*
-        Serial.print("ax = "); Serial.print((int)1000*ax);  
-        Serial.print(" ay = "); Serial.print((int)1000*ay); 
-        Serial.print(" az = "); Serial.print((int)1000*az); Serial.println(" mg");
-        Serial.print("gx = "); Serial.print( gx, 2); 
-        Serial.print(" gy = "); Serial.print( gy, 2); 
-        Serial.print(" gz = "); Serial.print( gz, 2); Serial.println(" deg/s");
-        Serial.print("mx = "); Serial.print( (int)1000*mx); 
-        Serial.print(" my = "); Serial.print( (int)1000*my); 
-        Serial.print(" mz = "); Serial.print( (int)1000*mz); Serial.println(" mG");
+    Serial.print("temperature = "); Serial.println(temperature, 2);
+    */
+    
+    //Serial.print("Yaw, Pitch, Roll: ");
+    Serial.println(yaw, 2);
+    //Serial.print(", ");
+    Serial.println(pitch, 2);
+    //Serial.print(", ");
+    Serial.println(roll, 2);
 
-        Serial.print("temperature = "); Serial.println(temperature, 2);
-        */
-        
-        //Serial.print("Yaw, Pitch, Roll: ");
-        Serial.println(yaw, 2);
-        //Serial.print(", ");
-        Serial.println(pitch, 2);
-        //Serial.print(", ");
-        Serial.println(roll, 2);
+    /*
+    Serial.print("q0 = "); Serial.print(q[0]);
+    Serial.print(" qx = "); Serial.print(q[1]); 
+    Serial.print(" qy = "); Serial.print(q[2]); 
+    Serial.print(" qz = "); Serial.println(q[3]); 
+    
 
-        /*
-        Serial.print("q0 = "); Serial.print(q[0]);
-        Serial.print(" qx = "); Serial.print(q[1]); 
-        Serial.print(" qy = "); Serial.print(q[2]); 
-        Serial.print(" qz = "); Serial.println(q[3]); 
-        
-
-        Serial.print("filter rate = "); Serial.println(1.0f/deltat, 1);
-        */
-      
-        // With ODR settings of 400 Hz, 380 Hz, and 25 Hz for the accelerometer, gyro, and magnetometer, respectively,
-        // the filter is updating at a ~125 Hz rate using the Madgwick scheme and ~165 Hz using the Mahony scheme 
-        // even though the display refreshes at only 2 Hz.
-        // The filter update rate can be increased by reducing the rate of data reading. The optimal implementation is
-        // one which balances the competing rates so they are about the same; that is, the filter updates the sensor orientation
-        // at about the same rate the data is changing. Of course, other implementations are possible. One might consider
-        // updating the filter at twice the average new data rate to allow for finite filter convergence times.
-        // The filter update rate is determined mostly by the mathematical steps in the respective algorithms, 
-        // the processor speed (8 MHz for the 3.3V Pro Mini), and the sensor ODRs, especially the magnetometer ODR:
-        // smaller ODRs for the magnetometer produce the above rates, maximum magnetometer ODR of 100 Hz produces
-        // filter update rates of ~110 and ~135 Hz for the Madgwick and Mahony schemes, respectively. 
-        // This is presumably because the magnetometer read takes longer than the gyro or accelerometer reads.
-        // With low ODR settings of 100 Hz, 95 Hz, and 6.25 Hz for the accelerometer, gyro, and magnetometer, respectively,
-        // the filter is updating at a ~150 Hz rate using the Madgwick scheme and ~200 Hz using the Mahony scheme.
-        // These filter update rates should be fast enough to maintain accurate platform orientation for 
-        // stabilization control of a fast-moving robot or quadcopter. Compare to the update rate of 200 Hz
-        // produced by the on-board Digital Motion Processor of Invensense's MPU6050 6 DoF and MPU9150 9DoF sensors.
-        // The 3.3 V 8 MHz Pro Mini is doing pretty well!
-        
-        //display.setCursor(0, 40); display.print("rt: "); display.print((1/deltat)); display.print(" Hz"); 
-        //display.display();
-        
-        count = millis();
-    }
+    Serial.print("filter rate = "); Serial.println(1.0f/deltat, 1);
+    */
+  
+    /*
+    With ODR settings of 400 Hz, 380 Hz, and 25 Hz for the accelerometer, gyro, and magnetometer, respectively,
+    the filter is updating at a ~125 Hz rate using the Madgwick scheme and ~165 Hz using the Mahony scheme 
+    even though the display refreshes at only 2 Hz.
+    The filter update rate can be increased by reducing the rate of data reading. The optimal implementation is
+    one which balances the competing rates so they are about the same; that is, the filter updates the sensor orientation
+    at about the same rate the data is changing. Of course, other implementations are possible. One might consider
+    updating the filter at twice the average new data rate to allow for finite filter convergence times.
+    The filter update rate is determined mostly by the mathematical steps in the respective algorithms, 
+    the processor speed (8 MHz for the 3.3V Pro Mini), and the sensor ODRs, especially the magnetometer ODR:
+    smaller ODRs for the magnetometer produce the above rates, maximum magnetometer ODR of 100 Hz produces
+    filter update rates of ~110 and ~135 Hz for the Madgwick and Mahony schemes, respectively. 
+    is presumably because the magnetometer read takes longer than the gyro or accelerometer reads.
+    With low ODR settings of 100 Hz, 95 Hz, and 6.25 Hz for the accelerometer, gyro, and magnetometer, respectively,
+    the filter is updating at a ~150 Hz rate using the Madgwick scheme and ~200 Hz using the Mahony scheme.
+    These filter update rates should be fast enough to maintain accurate platform orientation for 
+    stabilization control of a fast-moving robot or quadcopter. Compare to the update rate of 200 Hz
+    produced by the on-board Digital Motion Processor of Invensense's MPU6050 6 DoF and MPU9150 9DoF sensors.
+    The 3.3 V 8 MHz Pro Mini is doing pretty well!
+    */
+    
+    //display.setCursor(0, 40); display.print("rt: "); display.print((1/deltat)); display.print(" Hz"); 
+    //display.display();
+     
+     delay(25); // updates at 40 Hz (1/40 = 25 ms)   
 }
