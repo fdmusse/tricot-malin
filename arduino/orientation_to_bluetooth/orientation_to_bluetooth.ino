@@ -20,7 +20,7 @@ SPI and Wire libraries even though we are only using I2C */
 #include "data_fusion.h"
 
 // Example I2C Setup
-// SDO_XM and SDO_G are both grounded, so our addresses are:
+// SDO_XM and SDO_G are both pulled-up, so our addresses are:
 
 #define LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW
 #define LSM9DS0_G   0x6B // Would be 0x6A if SDO_G is LOW
