@@ -6,12 +6,12 @@ String val;     // Data received from the serial port
 String portName = Serial.list()[2]; //may need to be changed to match your port
 
 // Create object from Serial class
-Serial myPort = new Serial(this, portName, 38400); //  115200 bps is the same baud rate as Arduino 
+Serial myPort = new Serial(this, "/dev/pts/21", 115200); //  115200 bps is the same baud rate as Arduino 
 
 
-float pitch = 0;
-float roll = 0;
-
+float pitch = 0.0;
+float roll = 0.0;
+float yaw = 0.0;
  
 void setup()  { 
   size(640, 360, P3D); 
@@ -25,30 +25,17 @@ void draw()  {
   pushMatrix(); 
   translate(width/2, height/2, -30); 
   
-  if (myPort.available()>0) {
-    val = myPort.readStringUntil('\n');
-    println(val);
-    if( val != null && !val.isEmpty()){
-        int indexComma = val.indexOf(',');
-    //println(indexComma);
-    if(indexComma > 0){
-      String pitchStr = val.substring(0,indexComma);
-      //println(pitchStr);
-      pitch = Float.valueOf(pitchStr).floatValue();
-       //println(pitch);
-       
-       String rollStr = val.substring(indexComma+1, val.length());
-       roll = Float.valueOf(rollStr).floatValue();
-        // println(rollStr);
-    }
-    
-    }
-    
+  if (myPort.available() > 0) {
+    yaw = Float.valueOf(myPort.readStringUntil('\n')).floatValue();
+    pitch = Float.valueOf(myPort.readStringUntil('\n')).floatValue();
+    roll = Float.valueOf(myPort.readStringUntil('\n')).floatValue();  
   }
  
   
   rotateX(pitch); 
-  rotateY(-roll); 
+  rotateY(-roll);
+  rotateZ(yaw);
+  
   
   scale(90);
   beginShape(QUADS);
