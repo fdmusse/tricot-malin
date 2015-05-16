@@ -19,11 +19,15 @@ SPI and Wire libraries even though we are only using I2C */
 #include <Wire.h>
 #include <SFE_LSM9DS0.h>
 #include "data_fusion.h"
+#include <Adafruit_NeoPixel.h>
 
 #define RIGHT_LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW
 #define RIGHT_LSM9DS0_G   0x6B // Would be 0x6A if SDO_G is LOW
 #define LEFT_LSM9DS0_XM  0x1E
 #define LEFT_LSM9DS0_G   0x6A
+
+#define RIGHT_LEDS_PIN 5
+#define LEFT_LEDS_PIN 6
 
 LSM9DS0 right_imu(MODE_I2C, RIGHT_LSM9DS0_G, RIGHT_LSM9DS0_XM);
 LSM9DS0 left_imu(MODE_I2C, LEFT_LSM9DS0_G, LEFT_LSM9DS0_XM);
@@ -31,6 +35,9 @@ LSM9DS0 left_imu(MODE_I2C, LEFT_LSM9DS0_G, LEFT_LSM9DS0_XM);
 imu_data right_data, left_data;
 
 float declination = 1.37; // declination at Saint Martin D'Hères, France is 1°22' E ± 0°20' on 16/05/2015
+
+Adafruit_NeoPixel right_leds = Adafruit_NeoPixel(3, RIGHT_LEDS_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel left_leds = Adafruit_NeoPixel(3, LEFT_LEDS_PIN, NEO_GRB + NEO_KHZ800);
 
 void setup()
 {
@@ -51,7 +58,12 @@ void setup()
         
     imu_setup(&right_imu, &right_data);
     imu_setup(&left_imu, &left_data);
-
+    
+    right_leds.begin();
+    left_leds.begin();
+    
+    colorWipe(right_leds, right_leds.Color(0, 255, 0), 50); // green
+    colorWipe(left_leds, left_leds.Color(0, 0, 255), 50); // blue
 }
 
 void loop()
@@ -71,4 +83,13 @@ void loop()
     imu_send(&left_data);
     
     delay(25); // updates at ~40 Hz (1/40 = 25 ms)
+}
+
+// Fill the dots one after the other with a color
+void colorWipe(Adafruit_NeoPixel strip, uint32_t c, uint8_t wait) {
+  for(uint16_t i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, c);
+      strip.show();
+      delay(wait);
+  }
 }
