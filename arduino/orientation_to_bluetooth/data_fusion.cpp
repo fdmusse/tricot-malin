@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <SFE_LSM9DS0.h>
 #include "data_fusion.h"
 
 // global constants for 9 DoF fusion and AHRS (Attitude and Heading Reference System)
@@ -17,13 +18,72 @@
 #define Kp 2.0f * 5.0f // these are the free parameters in the Mahony filter and fusion scheme, Kp for proportional feedback, Ki for integral
 #define Ki 0.0f
 
-void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
+void imu_setup(LSM9DS0 *imu, imu_data *data)
 {
-    float q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3];   // short name local variable for readability
+    // Set data output ranges; choose lowest ranges for maximum resolution
+    imu->setAccelScale(imu->A_SCALE_2G);
+    imu->setGyroScale(imu->G_SCALE_245DPS); 
+    imu->setMagScale(imu->M_SCALE_2GS);
+  
+    // Set output data rates  
+    imu->setAccelODR(imu->A_ODR_200); // Set accelerometer update rate at 100 Hz
+    // Accelerometer anti-aliasing filter rate can be 50, 194, 362, or 763 Hz
+    // Anti-aliasing acts like a low-pass filter allowing oversampling of accelerometer and rejection of high-frequency spurious noise.
+    // Strategy here is to effectively oversample accelerometer at 100 Hz and use a 50 Hz anti-aliasing (low-pass) filter frequency
+    // to get a smooth ~150 Hz filter update rate
+    imu->setAccelABW(imu->A_ABW_50); // Choose lowest filter setting for low noise
+    imu->setGyroODR(imu->G_ODR_190_BW_125);  // Set gyro update rate to 190 Hz with the smallest bandwidth for low noise
+    imu->setMagODR(imu->M_ODR_125); // Set magnetometer to update every 80 ms
+    
+    // Use the FIFO mode to average accelerometer and gyro readings to calculate the biases, which can then be removed from
+    // all subsequent measurements.
+    imu->calLSM9DS0(data->gbias, data->abias);
+}
+
+void imu_read(LSM9DS0 *imu, imu_data *data)
+{
+    imu->readGyro(); // Read raw gyro data
+    data->gx = imu->calcGyro(imu->gx) - data->gbias[0]; // Convert to degrees per seconds, remove gyro biases
+    data->gy = imu->calcGyro(imu->gy) - data->gbias[1];
+    data->gz = imu->calcGyro(imu->gz) - data->gbias[2];
+
+    imu->readAccel(); // Read raw accelerometer data
+    data->ax = imu->calcAccel(imu->ax) - data->abias[0]; // Convert to g's, remove accelerometer biases
+    data->ay = imu->calcAccel(imu->ay) - data->abias[1];
+    data->az = imu->calcAccel(imu->az) - data->abias[2];
+
+    imu->readMag();           // Read raw magnetometer data
+    data->mx = imu->calcMag(imu->mx);     // Convert to Gauss and correct for calibration
+    data->my = imu->calcMag(imu->my);
+    data->mz = imu->calcMag(imu->mz);
+
+    data->now = micros();
+    data->deltat = ((data->now - data->last_update)/1000000.0f); // set integration time by time elapsed since last filter update
+    data->last_update = data->now;
+}
+
+void imu_send(imu_data *data)
+{
+    Serial.print(data->yaw, 2);
+    Serial.print("#");
+    Serial.print(data->pitch, 2);
+    Serial.print("#");
+    Serial.println(data->roll, 2);
+}
+
+void MadgwickQuaternionUpdate(imu_data *imu)
+{
+    float q1 = imu->q[0], q2 = imu->q[1], q3 = imu->q[2], q4 = imu->q[3];   // short name local variable for readability
     float norm;
     float hx, hy, _2bx, _2bz;
     float s1, s2, s3, s4;
     float qDot1, qDot2, qDot3, qDot4;
+    
+    // Sensors x- and y-axes are aligned but magnetometer z-axis (+ down) is opposite to z-axis (+ up) of accelerometer and gyro!
+    // This is ok by aircraft orientation standards! 
+    float ax = imu->ax, ay = imu->ay, az = imu->az;
+    float gx = (imu->gx)*PI/180.0f, gy = (imu->gy)*PI/180.0f, gz = (imu->gz)*PI/180.0f; // gyro rate as rad/s
+    float mx = imu->mx, my = imu->my, mz = imu->mz;
 
     // Auxiliary variables to avoid repeated arithmetic
     float _2q1mx;
@@ -96,152 +156,26 @@ void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, 
     qDot4 = 0.5f * (q1 * gz + q2 * gy - q3 * gx) - beta * s4;
 
     // Integrate to yield quaternion
-    q1 += qDot1 * deltat;
-    q2 += qDot2 * deltat;
-    q3 += qDot3 * deltat;
-    q4 += qDot4 * deltat;
+    q1 += qDot1 * imu->deltat;
+    q2 += qDot2 * imu->deltat;
+    q3 += qDot3 * imu->deltat;
+    q4 += qDot4 * imu->deltat;
     norm = sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4);    // normalise quaternion
     norm = 1.0f/norm;
-    q[0] = q1 * norm;
-    q[1] = q2 * norm;
-    q[2] = q3 * norm;
-    q[3] = q4 * norm;
+    imu->q[0] = q1 * norm;
+    imu->q[1] = q2 * norm;
+    imu->q[2] = q3 * norm;
+    imu->q[3] = q4 * norm;
 
 }
 
-void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
+void quaternions_to_tait_bryan(imu_data *imu)
 {
-    float q1 = q[0], q2 = q[1], q3 = q[2], q4 = q[3];   // short name local variable for readability
-    float norm;
-    float hx, hy, bx, bz;
-    float vx, vy, vz, wx, wy, wz;
-    float ex, ey, ez;
-    float pa, pb, pc;
-
-    // Auxiliary variables to avoid repeated arithmetic
-    float q1q1 = q1 * q1;
-    float q1q2 = q1 * q2;
-    float q1q3 = q1 * q3;
-    float q1q4 = q1 * q4;
-    float q2q2 = q2 * q2;
-    float q2q3 = q2 * q3;
-    float q2q4 = q2 * q4;
-    float q3q3 = q3 * q3;
-    float q3q4 = q3 * q4;
-    float q4q4 = q4 * q4;   
-
-    // Normalise accelerometer measurement
-    norm = sqrt(ax * ax + ay * ay + az * az);
-    if (norm == 0.0f) return; // handle NaN
-    norm = 1.0f / norm;        // use reciprocal for division
-    ax *= norm;
-    ay *= norm;
-    az *= norm;
-
-    // Normalise magnetometer measurement
-    norm = sqrt(mx * mx + my * my + mz * mz);
-    if (norm == 0.0f) return; // handle NaN
-    norm = 1.0f / norm;        // use reciprocal for division
-    mx *= norm;
-    my *= norm;
-    mz *= norm;
-
-    // Reference direction of Earth's magnetic field
-    hx = 2.0f * mx * (0.5f - q3q3 - q4q4) + 2.0f * my * (q2q3 - q1q4) + 2.0f * mz * (q2q4 + q1q3);
-    hy = 2.0f * mx * (q2q3 + q1q4) + 2.0f * my * (0.5f - q2q2 - q4q4) + 2.0f * mz * (q3q4 - q1q2);
-    bx = sqrt((hx * hx) + (hy * hy));
-    bz = 2.0f * mx * (q2q4 - q1q3) + 2.0f * my * (q3q4 + q1q2) + 2.0f * mz * (0.5f - q2q2 - q3q3);
-
-    // Estimated direction of gravity and magnetic field
-    vx = 2.0f * (q2q4 - q1q3);
-    vy = 2.0f * (q1q2 + q3q4);
-    vz = q1q1 - q2q2 - q3q3 + q4q4;
-    wx = 2.0f * bx * (0.5f - q3q3 - q4q4) + 2.0f * bz * (q2q4 - q1q3);
-    wy = 2.0f * bx * (q2q3 - q1q4) + 2.0f * bz * (q1q2 + q3q4);
-    wz = 2.0f * bx * (q1q3 + q2q4) + 2.0f * bz * (0.5f - q2q2 - q3q3);  
-
-    // Error is cross product between estimated direction and measured direction of gravity
-    ex = (ay * vz - az * vy) + (my * wz - mz * wy);
-    ey = (az * vx - ax * vz) + (mz * wx - mx * wz);
-    ez = (ax * vy - ay * vx) + (mx * wy - my * wx);
-    if (Ki > 0.0f)
-    {
-        eInt[0] += ex;      // accumulate integral error
-        eInt[1] += ey;
-        eInt[2] += ez;
-    }
-    else
-    {
-        eInt[0] = 0.0f;     // prevent integral wind up
-        eInt[1] = 0.0f;
-        eInt[2] = 0.0f;
-    }
-
-    // Apply feedback terms
-    gx = gx + Kp * ex + Ki * eInt[0];
-    gy = gy + Kp * ey + Ki * eInt[1];
-    gz = gz + Kp * ez + Ki * eInt[2];
-
-    // Integrate rate of change of quaternion
-    pa = q2;
-    pb = q3;
-    pc = q4;
-    q1 = q1 + (-q2 * gx - q3 * gy - q4 * gz) * (0.5f * deltat);
-    q2 = pa + (q1 * gx + pb * gz - pc * gy) * (0.5f * deltat);
-    q3 = pb + (q1 * gy - pa * gz + pc * gx) * (0.5f * deltat);
-    q4 = pc + (q1 * gz + pa * gy - pb * gx) * (0.5f * deltat);
-
-    // Normalise quaternion
-    norm = sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4);
-    norm = 1.0f / norm;
-    q[0] = q1 * norm;
-    q[1] = q2 * norm;
-    q[2] = q3 * norm;
-    q[3] = q4 * norm;
-
-}
-
-void quaternions_to_tait_bryan()
-{
-    yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);   
-    pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-    roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
-    pitch *= 180.0f / PI;
-    yaw   *= 180.0f / PI; 
-    yaw   -= declination;
-    roll  *= 180.0f / PI;
-}
-
-void printOrientation(float x, float y, float z)
-{
-  
-  pitch = atan2(x, sqrt(y * y) + (z * z));
-  roll = atan2(y, sqrt(x * x) + (z * z));
-  pitch *= 180.0 / PI;
-  roll *= 180.0 / PI;
-  
-  Serial.print("Pitch, Roll: ");
-  Serial.print(pitch, 2);
-  Serial.print(", ");
-  Serial.println(roll, 2);
-}
-
-void printHeading(float hx, float hy)
-{
-      if (hy > 0)
-      {
-        heading = 90 - (atan(hx / hy) * (180 / PI));
-      }
-      else if (hy < 0)
-      {
-        heading = - (atan(hx / hy) * (180 / PI));
-      }
-      else // hy = 0
-      {
-        if (hx < 0) heading = 180;
-        else heading = 0;
-      }
-  
-  Serial.print("Heading: ");
-  Serial.println(heading, 2);
+    imu->yaw   = atan2(2.0f * (imu->q[1] * imu->q[2] + imu->q[0] * imu->q[3]), imu->q[0] * imu->q[0] + imu->q[1] * imu->q[1] - imu->q[2] * imu->q[2] - imu->q[3] * imu->q[3]);   
+    imu->pitch = -asin(2.0f * (imu->q[1] * imu->q[3] - imu->q[0] * imu->q[2]));
+    imu->roll  = atan2(2.0f * (imu->q[0] * imu->q[1] + imu->q[2] * imu->q[3]), imu->q[0] * imu->q[0] - imu->q[1] * imu->q[1] - imu->q[2] * imu->q[2] + imu->q[3] * imu->q[3]);
+    imu->pitch *= 180.0f / PI;
+    imu->yaw   *= 180.0f / PI; 
+    imu->yaw   -= declination;
+    imu->roll  *= 180.0f / PI;
 }
