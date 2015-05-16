@@ -72,14 +72,14 @@ void loop()
     imu_read(&right_imu, &right_data);
     MadgwickQuaternionUpdate(&right_data);
     quaternions_to_tait_bryan(&right_data);    
-    Serial.print("r#"); // right
+    Serial.print("r,"); // right
     imu_send(&right_data);
 
     // left arm IMU
     imu_read(&left_imu, &left_data);
     MadgwickQuaternionUpdate(&left_data);
     quaternions_to_tait_bryan(&left_data);
-    Serial.print("l#"); // left
+    Serial.print("l,"); // left
     imu_send(&left_data);
     
     delay(25); // updates at ~40 Hz (1/40 = 25 ms)
