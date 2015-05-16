@@ -12,6 +12,7 @@ struct imu_data
     uint32_t last_update = 0; // used to calculate integration interval
     uint32_t now = 0; // used to calculate integration interval
     float deltat = 0.0f; // integration interval for both filter schemes
+    uint32_t status = 0;
 };
 
 extern float declination;

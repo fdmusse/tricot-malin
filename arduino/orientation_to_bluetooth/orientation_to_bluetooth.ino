@@ -21,6 +21,8 @@ SPI and Wire libraries even though we are only using I2C */
 #include "data_fusion.h"
 #include <Adafruit_NeoPixel.h>
 
+#define OK 0x49D4
+
 #define RIGHT_LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW
 #define RIGHT_LSM9DS0_G   0x6B // Would be 0x6A if SDO_G is LOW
 #define LEFT_LSM9DS0_XM  0x1E
@@ -46,14 +48,14 @@ void setup()
     // begin() returns a 16-bit value which includes both the gyro 
     // and accelerometers WHO_AM_I response. Check this to
     // make sure communication was successful.
-    uint32_t status = right_imu.begin();
+    right_data.status = right_imu.begin();
 
-    if (status != 0x49D4)
+    if (right_data.status != OK)
         Serial.println("Error connecting to right LSM9DS0");
 
-    status = left_imu.begin();
+    left_data.status = left_imu.begin();
 
-    if (status != 0x49D4)
+    if (left_data.status != OK)
         Serial.println("Error connecting to left LSM9DS0");
         
     imu_setup(&right_imu, &right_data);
@@ -69,18 +71,24 @@ void setup()
 void loop()
 {
     // right arm IMU
-    imu_read(&right_imu, &right_data);
-    MadgwickQuaternionUpdate(&right_data);
-    quaternions_to_tait_bryan(&right_data);    
-    Serial.print("r,"); // right
-    imu_send(&right_data);
+    if (right_data.status == OK)
+    {
+        imu_read(&right_imu, &right_data);
+        MadgwickQuaternionUpdate(&right_data);
+        quaternions_to_tait_bryan(&right_data);    
+        Serial.print("r,"); // right
+        imu_send(&right_data);
+    }
 
     // left arm IMU
-    imu_read(&left_imu, &left_data);
-    MadgwickQuaternionUpdate(&left_data);
-    quaternions_to_tait_bryan(&left_data);
-    Serial.print("l,"); // left
-    imu_send(&left_data);
+    if (left_data.status == OK)
+    {
+        imu_read(&left_imu, &left_data);
+        MadgwickQuaternionUpdate(&left_data);
+        quaternions_to_tait_bryan(&left_data);
+        Serial.print("l,"); // left
+        imu_send(&left_data);
+    }
     
     delay(25); // updates at ~40 Hz (1/40 = 25 ms)
 }

@@ -64,11 +64,12 @@ void imu_read(LSM9DS0 *imu, imu_data *data)
 
 void imu_send(imu_data *data)
 {
-    Serial.print(data->yaw, 2);
+    Serial.print(data->roll, 0);
     Serial.print(",");
-    Serial.print(data->pitch, 2);
+    Serial.print(data->pitch, 0);
     Serial.print(",");
-    Serial.println(data->roll, 2);
+    Serial.print(data->yaw, 0);
+    Serial.print(",");
 }
 
 void MadgwickQuaternionUpdate(imu_data *imu)
