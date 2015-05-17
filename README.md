@@ -46,3 +46,7 @@ Tricot Malin (smart sweater in French) is a smart t-shirt that makes it possible
 * When a gesture is detected, the LEDs of the arm will shortly turn on.
 * When the lights turn off, a new gesture is ready to be detected. 
 * The gesture of each arm has its own an independent associated action.
+
+## Documentation
+
+All the project's documentation is available at our [Wiki](https://github.com/fdmusse/tricot-malin/wiki).
