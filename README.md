@@ -23,7 +23,7 @@ Tricot Malin (smart sweater in French) is a smart t-shirt that makes it possible
 ## Instructions
 
 1. Upload the [HCI UART slave firmware](https://github.com/RedBearLab/BLE_HCI/blob/master/cc2540_hci_fw/HCI_UART_115200bps_20130429.bin.zip) to the BLE Mini which will be connected to the JeeNode.
-2. Connect the components to the JeeNode according to the schematic using the jumper wires.
+2. Connect the components to the JeeNode according to the [schematic](https://github.com/fdmusse/tricot-malin/blob/master/schematic/tricot-malin-schematic.png) using the jumper wires.
 3. Upload the code `arduino/orientation_to_bluetooth/orientation_to_bluetooth.ino` to the JeeNode:
  * Connect the JeeNode to your computer with a FTDI USB to serial board, such as the [USB BUB II](http://moderndevice.com/product/usb-bub-ii/). 
   * Open the code in the Arduino IDE.
