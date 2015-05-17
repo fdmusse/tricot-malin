@@ -66,34 +66,28 @@ class Visualization:
         self.pitch=0
         self.yaw=0
     
-    def update(self, words):      
-        #line = line.replace("!ANG:","")   # Delete "!ANG:"
-        #print line
-        #words = string.split(line,",")    # Fields split
-        if len(words) > 2:
-            try:
-                self.roll = float(words[0])*deg2rad
-                self.pitch = float(words[1])*deg2rad
-                self.yaw = float(words[2])*deg2rad
-            except:
-                print "Invalid line"
+    def update(self, roll, pitch, yaw):      
 
-            axis=(cos(self.pitch)*cos(self.yaw),-cos(self.pitch)*sin(self.yaw),sin(self.pitch)) 
-            up=(sin(self.roll)*sin(self.yaw)+cos(self.roll)*sin(self.pitch)*cos(self.yaw),sin(self.roll)*cos(self.yaw)-cos(self.roll)*sin(self.pitch)*sin(self.yaw),-cos(self.roll)*cos(self.pitch))
-            self.platform.axis=axis
-            self.platform.up=up
-            self.platform.length=1.0
-            self.platform.width=0.65
-            self.plat_arrow.axis=axis
-            self.plat_arrow.up=up
-            self.plat_arrow.length=0.8
-            self.p_line.axis=axis
-            self.p_line.up=up
-            self.cil_roll.axis=(0.2*cos(self.roll),0.2*sin(self.roll),0)
-            self.cil_roll2.axis=(-0.2*cos(self.roll),-0.2*sin(self.roll),0)
-            self.cil_pitch.axis=(0.2*cos(self.pitch),0.2*sin(self.pitch),0)
-            self.cil_pitch2.axis=(-0.2*cos(self.pitch),-0.2*sin(self.pitch),0)
-            self.arrow_course.axis=(0.2*sin(self.yaw),0.2*cos(self.yaw),0)
-            self.L1.text = str(float(words[0]))
-            self.L2.text = str(float(words[1]))
-            self.L3.text = str(float(words[2]))
+        self.roll = roll
+        self.pitch = pitch
+        self.yaw = yaw
+
+        axis=(cos(self.pitch)*cos(self.yaw),-cos(self.pitch)*sin(self.yaw),sin(self.pitch)) 
+        up=(sin(self.roll)*sin(self.yaw)+cos(self.roll)*sin(self.pitch)*cos(self.yaw),sin(self.roll)*cos(self.yaw)-cos(self.roll)*sin(self.pitch)*sin(self.yaw),-cos(self.roll)*cos(self.pitch))
+        self.platform.axis=axis
+        self.platform.up=up
+        self.platform.length=1.0
+        self.platform.width=0.65
+        self.plat_arrow.axis=axis
+        self.plat_arrow.up=up
+        self.plat_arrow.length=0.8
+        self.p_line.axis=axis
+        self.p_line.up=up
+        self.cil_roll.axis=(0.2*cos(self.roll),0.2*sin(self.roll),0)
+        self.cil_roll2.axis=(-0.2*cos(self.roll),-0.2*sin(self.roll),0)
+        self.cil_pitch.axis=(0.2*cos(self.pitch),0.2*sin(self.pitch),0)
+        self.cil_pitch2.axis=(-0.2*cos(self.pitch),-0.2*sin(self.pitch),0)
+        self.arrow_course.axis=(0.2*sin(self.yaw),0.2*cos(self.yaw),0)
+        self.L1.text = str(self.roll)
+        self.L2.text = str(self.pitch)
+        self.L3.text = str(self.yaw)

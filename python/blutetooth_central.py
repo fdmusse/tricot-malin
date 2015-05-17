@@ -3,7 +3,9 @@ import serial
 import os, sys
 import struct
 from imu_visualization import *
+from detect_gestures import *
 import string
+import time
 
 # not posix system, we need msvcrt library for kbhit
 # for posix, we need termios and atexit
@@ -377,27 +379,45 @@ def ble_event_process():
           s += buf[i+7]
 
         words = string.split(s,",")    # Fields split
+        
         if len(words) != 5:
             print words
             print 'Bad line: #' + s + "#"
-        elif words[0] == "\x00r":
-            print ' -------------> Good line: ' + s
-            words.pop(0)
-            rightVisualization.update(words)
-        elif words[0] == "\x00l":
-            print ' -------------> Good line: ' + s
-            words.pop(0)
-            leftVisualization.update(words)
         else:
-            print words
-            print 'Bad line: #' + s + "#"
-              
+            roll = float(words[1])*deg2rad
+            pitch = float(words[2])*deg2rad
+            yaw = float(words[3])*deg2rad
+            
+            if words[0] == "\x00r":
+                print ' -------------> Good line: ' + s
+                rightVisualization.update(roll, pitch, yaw)
+                
+                if not rightDetect.isDetected():
+                    rightDetect.addMeasures(roll, pitch, yaw)
+                    if rightDetect.isDetected():
+                        ble_write_bytes('r')
+                
+            elif words[0] == "\x00l":
+                print ' -------------> Good line: ' + s
+                leftVisualization.update(roll, pitch, yaw)
+                
+                if not leftDetect.isDetected():
+                    leftDetect.addMeasures(roll, pitch, yaw)
+                    if leftDetect.isDetected():
+                        ble_write_bytes('l')
+                
+            else:
+                print words
+                print 'Bad line: #' + s + "#"
+                  
   else:
       print ' -> Not handled yet.'
 
 #
 #    Start our demo here
 #
+
+deg2rad = 3.141592/180.0
 
 if os.name == 'posix':
   TX.port = '/dev/ttyACM1'
@@ -416,10 +436,12 @@ kb = KB()
 rightVisualization = Visualization("Right hand IMU")
 leftVisualization = Visualization("Left hand IMU")
 
+rightDetect = DetectGesture()
+leftDetect = DetectGesture()
+
 while True:
   if ble_event_available():
     ble_event_process()
-
   if kb.kbhit():
     ch = kb.getch()
 
@@ -452,6 +474,12 @@ while True:
     elif ch == '2':
         print 'Send -> I love BLE!'
         ble_write_bytes('I love BLE!\r\n')
+        
+    elif ch == '3':
+        ble_write_bytes('l')
+        
+    elif ch == '4':
+        ble_write_bytes('r')
 
     else:
         print 'Invalid command.'

@@ -64,12 +64,23 @@ void setup()
     right_leds.begin();
     left_leds.begin();
     
-    colorWipe(right_leds, right_leds.Color(0, 255, 0), 50); // green
-    colorWipe(left_leds, left_leds.Color(0, 0, 255), 50); // blue
+    //colorWipe(right_leds, right_leds.Color(0, 255, 0), 50); // green
+    //colorWipe(left_leds, left_leds.Color(0, 0, 255), 50); // blue
 }
 
 void loop()
 {
+    if (Serial.available())
+    {
+        char readByte = Serial.read();
+        if (readByte == 'r')
+            colorWipe(right_leds, right_leds.Color(0, 255, 0), 500);
+        else if (readByte == 'l')
+            colorWipe(left_leds, left_leds.Color(0, 255, 0), 500);
+        else
+            Serial.println("Invalid byte received.");
+    }
+
     // right arm IMU
     if (right_data.status == OK)
     {
