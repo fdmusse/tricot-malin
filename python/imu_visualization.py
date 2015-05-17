@@ -53,7 +53,7 @@ class Visualization:
         visual.arrow(color=visual.color.green,axis=(0,-1,0), shaftwidth=0.02 , fixedwidth=1)
         visual.arrow(color=visual.color.green,axis=(0,0,-1), shaftwidth=0.02, fixedwidth=1)
         # visual.labels
-        visual.label(pos=(0,0,0.8),text="9DOF Razor IMU test",box=0,opacity=0)
+        visual.label(pos=(0,0,0.8),text=windowTitle, box=0,opacity=0)
         visual.label(pos=(1,0,0),text="X",box=0,opacity=0)
         visual.label(pos=(0,-1,0),text="Y",box=0,opacity=0)
         visual.label(pos=(0,0,-1),text="Z",box=0,opacity=0)
