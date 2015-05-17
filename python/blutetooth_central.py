@@ -307,10 +307,10 @@ def ble_event_process():
     event_code = ord(TX.read(1));
     data_len = ord(TX.read(1));
 
-    print '-----------------------------'
-    print '-Type        : 0x%02X' % (type)
-    print '-EventCode   : 0x%02X' % (event_code)
-    print '-Data Length : 0x%02X' % (data_len)
+    #print '-----------------------------'
+    #print '-Type        : 0x%02X' % (type)
+    #print '-EventCode   : 0x%02X' % (event_code)
+    #print '-Data Length : 0x%02X' % (data_len)
 
     buf = TX.read(data_len)
 
@@ -328,8 +328,8 @@ def ble_event_process():
     event = struct.unpack('H', buf[0]+buf[1])[0]
     status = ord(buf[2]);
 
-    print ' Event       : 0x%04X' % event
-    print ' Status      : 0x%02X' % status
+    #print ' Event       : 0x%04X' % event
+    #print ' Status      : 0x%02X' % status
 
     if event == 0x0601: # GAP_DeviceDiscoveryDone
         print 'GAP_DeviceDiscoveryDone'
@@ -371,44 +371,49 @@ def ble_event_process():
                     # GAP_DeviceDiscoveryCancel()
 
     elif event == 0x051B:
-        print 'ATT_HandleValueNotification'
+        #print 'ATT_HandleValueNotification'
         
         n = data_len - 7
         s = ''
         for i in xrange(n):
             s += buf[i+7]
 
-            words = string.split(s,",")    # Fields split
-            
-            if len(words) != 5:
-                print words
-                print 'Bad line: #' + s + "#"
-            else:
-                roll = float(words[1])*deg2rad
-                pitch = float(words[2])*deg2rad
-                yaw = float(words[3])*deg2rad
-                
+        words = string.split(s,",")    # Fields split
+        
+        if len(words) != 5:
+            print 'Bad line: ##' + s + "##"
+        else:
+            try:
+                roll = int(words[1]) # in degrees
+                pitch = int(words[2])
+                yaw = int(words[3])
+
                 if words[0] == "\x00r":
-                    print ' -------------> Good line: ' + s
-                    rightVisualization.update(roll, pitch, yaw)
-                    
+                    print 'Good line: ' + s
+                    rightVisualization.update(roll, pitch, yaw) # in degrees
                     if not rightDetect.isDetected():
-                        rightDetect.addMeasures(roll, pitch, yaw)
+                        rightDetect.addMeasures(roll, pitch, yaw) # in degrees
                         if rightDetect.isDetected():
+                            print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Detected right gesture"
                             ble_write_bytes('r')
-                            
-                        elif words[0] == "\x00l":
-                            print ' -------------> Good line: ' + s
-                            leftVisualization.update(roll, pitch, yaw)
-                            
-                            if not leftDetect.isDetected():
-                                leftDetect.addMeasures(roll, pitch, yaw)
-                                if leftDetect.isDetected():
-                                    ble_write_bytes('l')
-                                    
-                                else:
-                                    print words
-                                    print 'Bad line: #' + s + "#"
+                        
+                elif words[0] == "\x00l":
+                    print 'Good line: ' + s
+                    leftVisualization.update(roll, pitch, yaw)
+                    
+                    if not leftDetect.isDetected():
+                        leftDetect.addMeasures(roll, pitch, yaw)
+                        if leftDetect.isDetected():
+                            print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Detected left gesture"
+                            ble_write_bytes('l')
+                                
+                else:
+                    print 'Bad line: ##' + s + "##"
+            except:
+                print 'Bad line: ##' + s + "##"
+            
+            
+
                                     
     else:
         print ' -> Not handled yet.'
@@ -417,10 +422,8 @@ def ble_event_process():
 #    Start our demo here
 #
 
-deg2rad = 3.141592/180.0
-
 if os.name == 'posix':
-    TX.port = '/dev/ttyACM1'
+    TX.port = '/dev/ttyACM3'
 else:
     TX.port = 'COM5'
 
@@ -442,43 +445,44 @@ leftDetect = DetectGesture()
 while True:
     if ble_event_available():
         ble_event_process()
-        if kb.kbhit():
-            ch = kb.getch()
+        
+    if kb.kbhit():
+        ch = kb.getch()
 
-            if ch == 'd':
-                print 'Discovery...'
-                GAPCentralRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
-                DEFAULT_DISCOVERY_ACTIVE_SCAN,
-                DEFAULT_DISCOVERY_WHITE_LIST )
-            elif ch == 'e':
-                print 'Establish Link...'
-                print 'Connecting to: ' + hex(ord(found_address[0])) + ':'  + hex(ord(found_address[1])) + ':'  + hex(ord(found_address[2])) + ':'  + hex(ord(found_address[3])) + ':'  + hex(ord(found_address[4])) + ':'  + hex(ord(found_address[5]))
+        if ch == 'd':
+            print 'Discovery...'
+            GAPCentralRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
+            DEFAULT_DISCOVERY_ACTIVE_SCAN,
+            DEFAULT_DISCOVERY_WHITE_LIST )
+        elif ch == 'e':
+            print 'Establish Link...'
+            print 'Connecting to: ' + hex(ord(found_address[0])) + ':'  + hex(ord(found_address[1])) + ':'  + hex(ord(found_address[2])) + ':'  + hex(ord(found_address[3])) + ':'  + hex(ord(found_address[4])) + ':'  + hex(ord(found_address[5]))
 
-                GAPCentralRole_EstablishLink(DEFAULT_LINK_HIGH_DUTY_CYCLE,
-                DEFAULT_LINK_WHITE_LIST, '\x00', found_address )
+            GAPCentralRole_EstablishLink(DEFAULT_LINK_HIGH_DUTY_CYCLE,
+            DEFAULT_LINK_WHITE_LIST, '\x00', found_address )
 
-            elif ch == 'n':
-                print 'Enable Notification...'
-                ble_enable_notification()
+        elif ch == 'n':
+            print 'Enable Notification...'
+            ble_enable_notification()
 
-            elif ch == 'q':
-                print 'Quit'
-                TX.close()
-                break
+        elif ch == 'q':
+            print 'Quit'
+            TX.close()
+            break
 
-            elif ch == '1':
-                print 'Send -> Hello World!'
-                ble_write_bytes('Hello World!\r\n')
+        elif ch == '1':
+            print 'Send -> Hello World!'
+            ble_write_bytes('Hello World!\r\n')
 
-            elif ch == '2':
-                print 'Send -> I love BLE!'
-                ble_write_bytes('I love BLE!\r\n')
-                
-            elif ch == '3':
-                ble_write_bytes('l')
-                
-            elif ch == '4':
-                ble_write_bytes('r')
+        elif ch == '2':
+            print 'Send -> I love BLE!'
+            ble_write_bytes('I love BLE!\r\n')
+            
+        elif ch == '3':
+            ble_write_bytes('l')
+            
+        elif ch == '4':
+            ble_write_bytes('r')
 
-            else:
-                print 'Invalid command.'
+        else:
+            print 'Invalid command.'

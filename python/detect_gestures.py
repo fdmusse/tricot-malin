@@ -10,11 +10,11 @@ class DetectGesture:
         self.detectionTime = 0
         
     def addMeasures(self, roll, pitch, yaw):
-            
+         
         if not self.detected:
             self.measuresRoll.append(roll)
-            self.measuresPitch.append(pitch)
-            self.measuresYaw.append(yaw)
+            #self.measuresPitch.append(pitch)
+            #.measuresYaw.append(yaw)
             
             length = len(self.measuresRoll)
             
@@ -30,6 +30,6 @@ class DetectGesture:
                         break
 
     def isDetected(self):
-        if (time.time() - self.detectionTime) > 10:
+        if (time.time() - self.detectionTime) > 5:
             self.detected = False
         return self.detected

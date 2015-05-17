@@ -68,9 +68,9 @@ class Visualization:
     
     def update(self, roll, pitch, yaw):      
 
-        self.roll = roll
-        self.pitch = pitch
-        self.yaw = yaw
+        self.roll = roll*deg2rad
+        self.pitch = pitch*deg2rad
+        self.yaw = yaw*deg2rad
 
         axis=(cos(self.pitch)*cos(self.yaw),-cos(self.pitch)*sin(self.yaw),sin(self.pitch)) 
         up=(sin(self.roll)*sin(self.yaw)+cos(self.roll)*sin(self.pitch)*cos(self.yaw),sin(self.roll)*cos(self.yaw)-cos(self.roll)*sin(self.pitch)*sin(self.yaw),-cos(self.roll)*cos(self.pitch))
@@ -88,6 +88,7 @@ class Visualization:
         self.cil_pitch.axis=(0.2*cos(self.pitch),0.2*sin(self.pitch),0)
         self.cil_pitch2.axis=(-0.2*cos(self.pitch),-0.2*sin(self.pitch),0)
         self.arrow_course.axis=(0.2*sin(self.yaw),0.2*cos(self.yaw),0)
-        self.L1.text = str(self.roll)
-        self.L2.text = str(self.pitch)
-        self.L3.text = str(self.yaw)
+
+        self.L1.text = str(roll) # in degrees
+        self.L2.text = str(pitch)
+        self.L3.text = str(yaw)

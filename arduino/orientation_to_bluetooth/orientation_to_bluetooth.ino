@@ -23,10 +23,10 @@ SPI and Wire libraries even though we are only using I2C */
 
 #define OK 0x49D4
 
-#define RIGHT_LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW
-#define RIGHT_LSM9DS0_G   0x6B // Would be 0x6A if SDO_G is LOW
-#define LEFT_LSM9DS0_XM  0x1E
-#define LEFT_LSM9DS0_G   0x6A
+#define RIGHT_LSM9DS0_XM  0x1E 
+#define RIGHT_LSM9DS0_G   0x6A 
+#define LEFT_LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW
+#define LEFT_LSM9DS0_G   0x6B // Would be 0x6A if SDO_G is LOW
 
 #define RIGHT_LEDS_PIN 5
 #define LEFT_LEDS_PIN 6
@@ -63,9 +63,17 @@ void setup()
     
     right_leds.begin();
     left_leds.begin();
+
+    for(uint16_t i = 0; i < right_leds.numPixels(); i++) {
+      right_leds.setPixelColor(i, 0, 0, 0);
+  }
+
+      for(uint16_t i = 0; i < left_leds.numPixels(); i++) {
+      left_leds.setPixelColor(i, 0, 0, 0);
+  }
     
-    //colorWipe(right_leds, right_leds.Color(0, 255, 0), 50); // green
-    //colorWipe(left_leds, left_leds.Color(0, 0, 255), 50); // blue
+    right_leds.show();
+    left_leds.show();
 }
 
 void loop()
@@ -74,14 +82,14 @@ void loop()
     {
         char readByte = Serial.read();
         if (readByte == 'r')
-            colorWipe(right_leds, right_leds.Color(0, 255, 0), 500);
+            colorWipe(&right_leds, right_leds.Color(0, 255, 0));
         else if (readByte == 'l')
-            colorWipe(left_leds, left_leds.Color(0, 255, 0), 500);
+            colorWipe(&left_leds, left_leds.Color(0, 255, 0));
         else
             Serial.println("Invalid byte received.");
     }
 
-    // right arm IMU
+    // right arm imu_read
     if (right_data.status == OK)
     {
         imu_read(&right_imu, &right_data);
@@ -105,10 +113,20 @@ void loop()
 }
 
 // Fill the dots one after the other with a color
-void colorWipe(Adafruit_NeoPixel strip, uint32_t c, uint8_t wait) {
-  for(uint16_t i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, c);
-      strip.show();
-      delay(wait);
+void colorWipe(Adafruit_NeoPixel *strip, uint32_t c) {
+  
+
+  for(uint16_t i = 0; i < strip->numPixels(); i++) {
+      strip->setPixelColor(i, c);
+      strip->show();
+      delay(666);
   }
+
+  delay(1000);
+
+  for(int16_t i = strip->numPixels() - 1; i >= 0; i--) {
+      delay(666);
+      strip->setPixelColor(i, 0, 0, 0); // turns off
+      strip->show();
+    }
 }
