@@ -23,13 +23,18 @@ SPI and Wire libraries even though we are only using I2C */
 
 #define OK 0x49D4
 
-#define RIGHT_LSM9DS0_XM  0x1E 
-#define RIGHT_LSM9DS0_G   0x6A 
-#define LEFT_LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW
-#define LEFT_LSM9DS0_G   0x6B // Would be 0x6A if SDO_G is LOW
+#define RIGHT_LSM9DS0_XM  0x1D // Would be 0x1E if SDO_XM is LOW 
+#define RIGHT_LSM9DS0_G   0x6B  // Would be 0x6A if SDO_G is LOW
+#define LEFT_LSM9DS0_XM  0x1E
+#define LEFT_LSM9DS0_G   0x6A
 
-#define RIGHT_LEDS_PIN 5
-#define LEFT_LEDS_PIN 6
+#define RIGHT_LEDS_PIN 5 // D of P2 JeeNode
+#define LEFT_LEDS_PIN 6 // D of P3 JeeNode
+
+#define BUZZER_PIN 7
+#define BUZZER_GROUND_PIN 3
+#define BUZZER_NOTE 440
+#define BUZZER_TIME 2000 // 2 seconds
 
 LSM9DS0 right_imu(MODE_I2C, RIGHT_LSM9DS0_G, RIGHT_LSM9DS0_XM);
 LSM9DS0 left_imu(MODE_I2C, LEFT_LSM9DS0_G, LEFT_LSM9DS0_XM);
@@ -74,6 +79,11 @@ void setup()
     
     right_leds.show();
     left_leds.show();
+
+    pinMode(BUZZER_GROUND_PIN, OUTPUT);
+    digitalWrite(BUZZER_GROUND_PIN, LOW);
+
+    //pinMode(BUZZER_PIN, OUTPUT);
 }
 
 void loop()
@@ -82,9 +92,17 @@ void loop()
     {
         char readByte = Serial.read();
         if (readByte == 'r')
+        {
+            tone(BUZZER_PIN, BUZZER_NOTE, BUZZER_TIME);
             colorWipe(&right_leds, right_leds.Color(0, 255, 0));
+            noTone(BUZZER_PIN);
+        }
         else if (readByte == 'l')
+        {
+            tone(BUZZER_PIN, BUZZER_NOTE, BUZZER_TIME);
             colorWipe(&left_leds, left_leds.Color(0, 255, 0));
+            noTone(BUZZER_PIN);
+        }
         else
             Serial.println("Invalid byte received.");
     }
