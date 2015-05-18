@@ -423,7 +423,7 @@ def ble_event_process():
 #
 
 if os.name == 'posix':
-    TX.port = '/dev/ttyACM3'
+    TX.port = '/dev/ttyACM4'
 else:
     TX.port = 'COM5'
 

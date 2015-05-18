@@ -20,7 +20,7 @@ class DetectGesture:
             
             if (length >= 80):
                 for i in range(1):
-                    if (self.measuresRoll[i] > -15 and self.measuresRoll[i] < 15) and ((self.measuresRoll[length-i-1] > 165 and self.measuresRoll[length-i-1] < 180) or (self.measuresRoll[length-i-1] < -165 and self.measuresRoll[length-i] > -180)):
+                    if (self.measuresRoll[i] > -15 and self.measuresRoll[i] < 15) and ((self.measuresRoll[length-i-1] > 150 and self.measuresRoll[length-i-1] < 180) or (self.measuresRoll[length-i-1] < -150 and self.measuresRoll[length-i] > -180)):
                         if i == 0:
                             self.detected = True
                             self.measuresRoll = []
